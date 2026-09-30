@@ -1,279 +1,57 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="zh-CN">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>2026 年 9 月信用卡账单分析</title>
-<style>
-  :root {
-    --text-1: #1a1a1a; --text-2: #555; --text-3: #888; --text-4: #bbb;
-    --border: #e5e5e5; --surface-muted: #f4f4f5; --bg: #ffffff;
-    --chart-1: #3b82f6; --chart-2: #ef4444;
-  }
-  @media (prefers-color-scheme: dark) {
-    :root {
-      --text-1: #ececec; --text-2: #b0b0b0; --text-3: #808080; --text-4: #555;
-      --border: #2e2e2e; --surface-muted: #232325; --bg: #161617;
-    }
-  }
-  * { margin: 0; padding: 0; box-sizing: border-box; }
-  body {
-    font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Helvetica Neue", "Segoe UI", sans-serif;
-    background: var(--bg); color: var(--text-1);
-    line-height: 1.5;
-  }
-  .container { max-width: 880px; margin: 0 auto; padding: 40px 20px 64px; }
-
-  header h1 { font-size: 22px; font-weight: 600; }
-  header .period { font-size: 13px; color: var(--text-3); margin-top: 4px; }
-
-  .hero { margin-top: 28px; display: flex; align-items: baseline; gap: 12px; flex-wrap: wrap; }
-  .hero .num { font-size: 44px; font-weight: 600; font-variant-numeric: tabular-nums; letter-spacing: 0; }
-  .hero .label { font-size: 14px; color: var(--text-2); }
-  .stats { margin-top: 10px; font-size: 13px; color: var(--text-3); display: flex; gap: 20px; flex-wrap: wrap; }
-  .stats b { color: var(--text-2); font-weight: 500; font-variant-numeric: tabular-nums; }
-
-  section { margin-top: 44px; }
-  h2 { font-size: 16px; font-weight: 600; margin-bottom: 16px; }
-  h2 .sub { font-size: 12px; font-weight: 400; color: var(--text-3); margin-left: 8px; }
-
-  /* 分类条形 */
-  .bar-row { display: grid; grid-template-columns: 76px 1fr 130px; align-items: center; gap: 10px; margin-bottom: 9px; }
-  .bar-row .name { font-size: 13px; color: var(--text-2); }
-  .bar-track { height: 16px; border-radius: 4px; background: var(--surface-muted); overflow: hidden; }
-  .bar-fill { height: 100%; border-radius: 4px; background: var(--chart-1); }
-  .bar-row .val { font-size: 13px; text-align: right; font-variant-numeric: tabular-nums; }
-  .bar-row .val .pct { color: var(--text-3); font-size: 11px; margin-left: 6px; }
-
-  /* 每日趋势 */
-  .daily { width: 100%; height: 140px; display: block; }
-  .legend { display: flex; gap: 20px; font-size: 12px; color: var(--text-3); margin-top: 8px; flex-wrap: wrap; }
-  .legend i { display: inline-block; width: 9px; height: 9px; border-radius: 2px; margin-right: 5px; }
-
-  /* 表格 */
-  table { width: 100%; border-collapse: collapse; font-size: 13px; }
-  td, th { padding: 8px 6px; border-bottom: 0.5px solid var(--border); text-align: left; }
-  th { font-size: 12px; color: var(--text-3); font-weight: 500; }
-  td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
-  td .note { color: var(--text-4); font-size: 11px; margin-left: 6px; }
-
-  /* 建议卡片 */
-  .tips { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
-  @media (max-width: 640px) { .tips { grid-template-columns: 1fr; } }
-  .tip { border: 0.5px solid var(--border); border-radius: 10px; padding: 14px 16px; }
-  .tip .t { font-size: 13px; font-weight: 600; margin-bottom: 6px; }
-  .tip .save { color: var(--chart-1); font-size: 12px; font-weight: 500; margin-left: 6px; }
-  .tip p { font-size: 12.5px; color: var(--text-2); line-height: 1.6; }
-
-  footer { margin-top: 48px; font-size: 12px; color: var(--text-4); }
-  .cols { display: grid; grid-template-columns: 1fr; gap: 0; }
-</style>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#f4f3ec">
+  <meta name="description" content="按用途看懂每月费用，保留待确认事项、跨期分摊与来源依据。">
+  <title>钱都花在哪里 · 月度账本</title>
+  <link rel="stylesheet" href="./styles.css?v=20260929">
 </head>
 <body>
-<div class="container">
-  <header>
-    <h1>2026 年 9 月信用卡账单分析</h1>
-    <div class="period">招商银行 · 账期 08/17 – 09/16 · 账单日 09/17 · 到期还款日 10/05</div>
-  </header>
+  <a class="skip-link" href="#main">跳到主要内容</a>
+  <div class="shell">
+    <header class="masthead">
+      <a class="brand" href="./" aria-label="月度账本首页"><span class="brand-mark" aria-hidden="true">∷</span><span>月度账本<small>THE MONTHLY LEDGER</small></span></a>
+      <div class="masthead-right"><span class="edition">账期制 · 18 日至次月 17 日</span><button id="import-drafts" class="quiet-button">导入草稿</button><input id="draft-file" type="file" accept=".json,application/json" hidden><button id="export-drafts" class="quiet-button">导出本机草稿 <span aria-hidden="true">↗</span></button></div>
+    </header>
+    <main id="main" tabindex="-1">
+      <div id="loading" class="loading" role="status"><span class="loading-dot"></span>正在整理这期账本…</div>
+      <div id="app" hidden>
+        <section class="page-heading">
+          <div><p class="eyebrow">A LITTLE CLARITY, EVERY MONTH</p><h1>钱都花在哪里<span class="heading-dot">。</span></h1><p class="heading-description">看清用途，留住依据，让下一期更有安排。</p></div>
+          <label class="period-control"><span>当前账期</span><select id="period-select" aria-label="当前账期"></select><small id="period-dates"></small></label>
+        </section>
 
-  <div class="hero">
-    <span class="num">¥16,835.53</span>
-    <span class="label">本期净支出（应还金额）</span>
+        <div class="scope-line"><div id="scope-tabs" class="segmented" aria-label="归属主体"><button data-scope="all" aria-pressed="true">全部归属</button><button data-scope="household" aria-pressed="false">家庭生活</button><button data-scope="business" aria-pressed="false">工作经营</button><button data-scope="unassigned" aria-pressed="false">待归属</button></div><div id="mode-tabs" class="mode-tabs" aria-label="金额口径"><button data-mode="expense" aria-pressed="true">月度费用</button><span aria-hidden="true">/</span><button data-mode="payment" aria-pressed="false">付款记录</button></div></div>
+
+        <section class="overview" aria-label="本期概览">
+          <div class="amount-overview"><div class="metric-label"><span id="amount-label">已明确本期费用</span><span id="completeness-badge" class="badge">尚未完整</span></div><div class="hero-amount"><span class="currency">¥</span><span id="hero-amount">—</span></div><p id="hero-note" class="hero-note"></p><div class="hero-submetrics"><div><span id="pending-metric-label">待核对记录</span><strong id="pending-count">—</strong></div><div><span id="reference-metric-label">待核对原交易金额</span><strong id="pending-reference">—</strong></div><div><span>已设置预算</span><strong id="budget-total">未设置</strong></div></div></div>
+          <aside class="reading-note"><div class="reading-note-top"><span class="small-dot"></span><span>关于这份账本</span><span class="note-index">01 / 03</span></div><h2>付款发生了，<br>费用未必在这期。</h2><p>预付留给未来，押金单列。用途、归属或期间不明确的记录，留待核对。</p><button class="text-button light" id="jump-methodology">查看统计口径 <span aria-hidden="true">↗</span></button></aside>
+        </section>
+
+        <div id="draft-notice" class="draft-notice" hidden></div>
+        <div id="future-notice" class="inline-notice" hidden></div>
+        <nav id="view-tabs" class="view-tabs" aria-label="账本页面"><button data-view="overview" aria-current="page">用途总览</button><button data-view="review">待确认 <span id="review-tab-count" class="tab-count">0</span></button><button data-view="prepaid">跨期与储值</button><button data-view="budget">预算计划</button></nav>
+
+        <div class="filter-bar"><div class="search-wrap"><span aria-hidden="true">⌕</span><input id="search" type="search" placeholder="搜索用途、商户、摘要或编号" aria-label="搜索流水"></div><label class="filter-label"><span>状态</span><select id="status-select" aria-label="确认状态"><option value="all">全部状态</option><option value="pending">金额待核定</option><option value="known">金额已明确</option></select></label><button id="reset-filters" class="quiet-button">重置筛选</button><button id="export-csv" class="quiet-button export-csv">导出 CSV <span aria-hidden="true">↓</span></button></div>
+
+        <details class="advanced-filters"><summary>日期与金额筛选</summary><div><label>起始日期<input id="date-from" type="date"></label><label>截止日期<input id="date-to" type="date"></label><label>最低金额（元）<input id="min-amount" inputmode="decimal" placeholder="不限"></label><label>最高金额（元）<input id="max-amount" inputmode="decimal" placeholder="不限"></label></div><p class="footnote">金额按当前费用 / 付款口径筛选；未知费用不匹配金额范围。</p></details>
+        <section id="overview-panel" class="view-panel" aria-labelledby="group-heading"><div class="section-title"><div><p class="eyebrow">FOLLOW THE PURPOSE</p><h2 id="group-heading">每一笔，都有去处</h2></div><div class="group-tools"><label><span class="sr-only">查看维度</span><select id="dimension-select" aria-label="查看维度"><option value="purpose">按用途</option><option value="platform">按支付渠道</option><option value="account">按资金账户</option><option value="scope">按归属主体</option><option value="necessity">按预算调整空间</option><option value="frequency">按发生规律</option><option value="party">按商户 / 收款人</option><option value="nature">按资金性质</option></select></label><button id="collapse-all" class="quiet-button">全部收起</button></div></div><div class="table-caption"><span id="group-caption">展开分类，查看组成明细</span><span id="amount-column-label">本期计入金额</span></div><div id="group-list"></div><p id="group-footnote" class="footnote"></p></section>
+
+        <section id="review-panel" class="view-panel" hidden aria-labelledby="review-heading"><div class="section-title"><div><p class="eyebrow">ONE QUESTION AT A TIME</p><h2 id="review-heading">把不确定的，慢慢理清</h2></div><span id="review-summary" class="muted"></span></div><p class="section-description">优先查看影响金额较大的记录。确认保存到这台设备，可导出草稿后继续整理。</p><div id="review-list"></div></section>
+
+        <section id="prepaid-panel" class="view-panel" hidden aria-labelledby="prepaid-heading"><div class="section-title"><div><p class="eyebrow">PAID NOW, USED LATER</p><h2 id="prepaid-heading">给时间留一笔账</h2></div></div><p class="section-description">以下展示当前筛选命中的预付关联组。已知分摊不代表未来账期的完整费用。</p><div id="prepaid-content"></div></section>
+
+        <section id="budget-panel" class="view-panel" hidden aria-labelledby="budget-heading"><div class="section-title"><div><p class="eyebrow">A PLAN, NOT A PREDICTION</p><h2 id="budget-heading">给下一期留点从容</h2></div><button id="next-period" class="outline-button">安排下一期 <span aria-hidden="true">→</span></button></div><p id="budget-description" class="section-description"></p><div class="budget-banner"><span class="budget-symbol" aria-hidden="true">↗</span><p>预算只保存于本机。留空表示未设置，填入 0 表示明确不安排额度。当前实际费用尚不完整，差额仅供参考。</p></div><div id="budget-list"></div></section>
+
+        <details id="methodology" class="methodology"><summary><span>账本说明与来源核对</span><span class="summary-plus" aria-hidden="true">+</span></summary><div id="methodology-content"></div></details>
+        <footer><div><span class="footer-mark" aria-hidden="true">∷</span><span>记得清楚，安排从容。</span></div><p id="footer-meta"></p></footer>
+      </div>
+    </main>
   </div>
-  <div class="stats">
-    <span>消费 <b>¥21,608.45</b>（241 笔）</span>
-    <span>退款 <b>−¥4,772.92</b>（22 笔）</span>
-    <span>最低还款 <b>¥841.78</b></span>
-    <span>额度使用 <b>28%</b>（6 万额度）</span>
-  </div>
-
-  <section>
-    <h2>每日净支出<span class="sub">退款较多的日子为负值</span></h2>
-    <svg class="daily" id="dailyChart" preserveAspectRatio="none"></svg>
-    <div class="legend">
-      <span><i style="background: var(--chart-1)"></i>当日净支出</span>
-      <span><i style="background: var(--chart-2)"></i>当日净退款</span>
-      <span>峰值：08/17 ¥3,814 · 08/30 ¥2,375 · 09/04 ¥2,135（三天占全月近一半）</span>
-    </div>
-  </section>
-
-  <section>
-    <h2>支出构成<span class="sub">按净额（消费 − 退款）</span></h2>
-    <div id="cats"></div>
-  </section>
-
-  <section>
-    <h2>大额交易<span class="sub">单笔净额 ≥ ¥300</span></h2>
-    <table>
-      <thead><tr><th>日期</th><th>商户</th><th class="num">金额</th></tr></thead>
-      <tbody id="tops"></tbody>
-    </table>
-  </section>
-
-  <section>
-    <h2>高频消费<span class="sub">单笔小、积少成多</span></h2>
-    <table>
-      <thead><tr><th>类别</th><th class="num">笔数</th><th class="num">金额</th></tr></thead>
-      <tbody id="freq"></tbody>
-    </table>
-  </section>
-
-  <section>
-    <h2>省钱建议</h2>
-    <div class="tips">
-      <div class="tip">
-        <div class="t">1 · 抖音/直播购物是最大可压缩项<span class="save">月省 ¥1,000+</span></div>
-        <p>抖音支付 34 笔共 ¥2,813（纯购物 12 笔 ¥1,493），加拼多多 ¥341，冲动型电商接近 ¥1,800。设每月 ¥500 预算上限，或购物车放 48 小时再决定。</p>
-      </div>
-      <div class="tip">
-        <div class="t">2 · 大额消费集中在「扫货日」<span class="save">事前定预算</span></div>
-        <p>8/17、8/30、9/4 三天花了 ¥8,300（昂跑、唯泰、携程）。本期退款 ¥4,773 说明不少「买了又退」，下单前多确认尺码和行程。</p>
-      </div>
-      <div class="tip">
-        <div class="t">3 · 咖啡 + 零食的拿铁因子<span class="save">月省 ¥200~300</span></div>
-        <p>咖啡 12 笔 ¥247、售货机 10 笔 ¥65、巴比 5 笔 ¥27。沙县 12 次性价比高可保留；砍售货机零食和重复咖啡更轻松。</p>
-      </div>
-      <div class="tip">
-        <div class="t">4 · 用车成本 ¥1,877<span class="save">结构性优化</span></div>
-        <p>ETC 57 笔 ¥996（多为短途通勤费），充电 13 笔 ¥881。对比地铁通勤成本；充电换谷电时段或家充可省 30~50%。</p>
-      </div>
-      <div class="tip">
-        <div class="t">5 · 订阅服务盘点<span class="save">¥298/月</span></div>
-        <p>iCloud、Apple 服务 ×3、网易云、腾讯云 ¥70、AI 服务 ¥133。检查是否有忘了取消的订阅，云服务器闲置就降配。</p>
-      </div>
-      <div class="tip">
-        <div class="t">6 · 还款提醒</div>
-        <p>本期应还 ¥16,835.53，10/05 到期。本期循环利息为 0，保持全额还款；退款未到账也要按账单金额还。</p>
-      </div>
-    </div>
-  </section>
-
-  <footer>数据来自招商银行 2026 年 9 月信用卡对账单 · 消费 241 笔 / 退款 22 笔逐笔核对，净额与应还金额一致</footer>
-</div>
-
-<script>
-var CATS = [
-  ["购物消费", 5845.68], ["旅行住宿", 2528.56], ["商超生鲜", 1854.73],
-  ["餐饮美食", 1525.38], ["交通出行", 1163.41], ["其他", 1106.48],
-  ["生活服务", 901.00], ["车辆充电", 626.03], ["运动健身", 508.87],
-  ["生活缴费", 477.60], ["数码订阅", 297.79]
-];
-var TOTAL = 16835.53;
-var DAILY = [
-  ["08/17",3814.39],["08/18",1130.20],["08/19",-355.18],["08/20",104.33],
-  ["08/21",191.86],["08/22",187.81],["08/23",434.85],["08/24",605.34],
-  ["08/25",231.17],["08/26",-728.08],["08/27",136.50],["08/28",761.94],
-  ["08/29",1144.14],["08/30",2374.82],["08/31",199.00],["09/01",499.51],
-  ["09/02",140.92],["09/03",481.52],["09/04",2135.00],["09/05",374.91],
-  ["09/06",981.60],["09/07",139.28],["09/08",322.49],["09/09",89.40],
-  ["09/10",517.91],["09/11",-39.72],["09/12",291.79],["09/13",519.22],
-  ["09/14",102.68],["09/15",26.22],["09/16",19.71]
-];
-var TOPS = [
-  ["08/30", "携程旅行网", 1952.00, ""],
-  ["09/04", "唯泰精品购物村（苏州）", 1729.60, "1,749.60 那笔已退"],
-  ["08/17", "昂跑体育用品", 1290.00, ""],
-  ["08/18", "晶洗信息科技（洗衣）", 901.00, "857 那笔已退"],
-  ["08/29", "得物", 576.05, ""],
-  ["08/17", "索尼数码旗舰店", 514.00, ""],
-  ["08/17", "中铁网络（火车票）", 410.00, ""],
-  ["09/05", "广州蓝琼实业（抖音）", 329.00, ""],
-  ["08/29", "携程旅行网", 314.22, ""],
-  ["08/28", "松香源筑生活服务中心", 300.00, ""]
-];
-var FREQ = [
-  ["ETC 通行", 57, 996.30],
-  ["抖音支付（全部）", 34, 2812.94],
-  ["车辆充电（特来电/云快充/国网）", 13, 880.89],
-  ["沙县小吃", 12, 295.50],
-  ["咖啡（瑞幸/Manner/星巴克/MStand）", 12, 246.78],
-  ["魔盒 CITYBOX 售货机", 10, 65.00],
-  ["拼多多", 7, 341.42],
-  ["巴比馒头", 5, 27.00],
-  ["哈啰单车", 5, 10.50],
-  ["Apple 服务 + iCloud", 4, 84.00]
-];
-
-function fmt(n) {
-  return n.toLocaleString('zh-CN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-}
-
-/* 分类条形：同色系透明度阶梯 */
-var catsEl = document.getElementById('cats');
-var opacities = [100, 85, 72, 60, 50, 42, 36, 31, 27, 24, 21];
-CATS.forEach(function (c, i) {
-  var pct = c[1] / TOTAL * 100;
-  var row = document.createElement('div');
-  row.className = 'bar-row';
-  row.innerHTML =
-    '<span class="name">' + c[0] + '</span>' +
-    '<div class="bar-track"><div class="bar-fill" style="width:' + (c[1] / CATS[0][1] * 100).toFixed(1) +
-      '%; opacity:' + (opacities[i] / 100) + '"></div></div>' +
-    '<span class="val">¥' + fmt(c[1]) + '<span class="pct">' + pct.toFixed(1) + '%</span></span>';
-  catsEl.appendChild(row);
-});
-
-/* 每日趋势 */
-var svg = document.getElementById('dailyChart');
-var W = 800, H = 140, padT = 6, padB = 18;
-svg.setAttribute('viewBox', '0 0 ' + W + ' ' + H);
-var max = 3900, min = -800;
-var zeroY = padT + (max / (max - min)) * (H - padT - padB);
-var bw = W / DAILY.length;
-var cs = getComputedStyle(document.documentElement);
-var cPos = cs.getPropertyValue('--chart-1').trim();
-var cNeg = cs.getPropertyValue('--chart-2').trim();
-var cGrid = cs.getPropertyValue('--text-4').trim();
-var ns = 'http://www.w3.org/2000/svg';
-
-var base = document.createElementNS(ns, 'line');
-base.setAttribute('x1', 0); base.setAttribute('x2', W);
-base.setAttribute('y1', zeroY); base.setAttribute('y2', zeroY);
-base.setAttribute('stroke', cGrid); base.setAttribute('stroke-width', '0.5');
-svg.appendChild(base);
-
-DAILY.forEach(function (d, i) {
-  var v = d[1];
-  var h = Math.abs(v) / (max - min) * (H - padT - padB);
-  var r = document.createElementNS(ns, 'rect');
-  r.setAttribute('x', (i * bw + bw * 0.18).toFixed(1));
-  r.setAttribute('width', (bw * 0.64).toFixed(1));
-  r.setAttribute('y', v >= 0 ? (zeroY - h).toFixed(1) : zeroY.toFixed(1));
-  r.setAttribute('height', Math.max(h, 1).toFixed(1));
-  r.setAttribute('rx', '2');
-  r.setAttribute('fill', v >= 0 ? cPos : cNeg);
-  var t = document.createElementNS(ns, 'title');
-  t.textContent = d[0] + '  ¥' + fmt(v);
-  r.appendChild(t);
-  svg.appendChild(r);
-});
-[0, 15, 30].forEach(function (i) {
-  var tx = document.createElementNS(ns, 'text');
-  tx.setAttribute('x', (i * bw).toFixed(1));
-  tx.setAttribute('y', H - 4);
-  tx.setAttribute('font-size', '10');
-  tx.setAttribute('fill', cGrid);
-  tx.textContent = DAILY[i][0];
-  svg.appendChild(tx);
-});
-
-/* 大额交易 */
-var topsEl = document.getElementById('tops');
-TOPS.forEach(function (t) {
-  var tr = document.createElement('tr');
-  tr.innerHTML = '<td>' + t[0] + '</td><td>' + t[1] +
-    (t[3] ? '<span class="note">' + t[3] + '</span>' : '') +
-    '</td><td class="num">¥' + fmt(t[2]) + '</td>';
-  topsEl.appendChild(tr);
-});
-
-/* 高频消费 */
-var freqEl = document.getElementById('freq');
-FREQ.forEach(function (f) {
-  var tr = document.createElement('tr');
-  tr.innerHTML = '<td>' + f[0] + '</td><td class="num">' + f[1] + '</td><td class="num">¥' + fmt(f[2]) + '</td>';
-  freqEl.appendChild(tr);
-});
-</script>
+  <dialog id="event-dialog" aria-labelledby="dialog-title"><div class="dialog-top"><span class="eyebrow">TRANSACTION DETAIL</span><button id="close-dialog" class="icon-button" aria-label="关闭详情">×</button></div><div id="dialog-content"></div></dialog>
+  <div id="toast" class="toast" role="status" aria-live="polite" hidden></div>
+  <script type="module" src="./app.mjs?v=20260929"></script>
 </body>
 </html>
