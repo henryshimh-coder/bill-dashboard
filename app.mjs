@@ -184,6 +184,49 @@ function render() {
   renderOverview(); renderGroups(); renderReview(); renderPrepaid(); renderBudgets();
 }
 
+function purposeCatalog() {
+  const catalog = new Map(categories.map(name => [name, new Set()]));
+  for (const event of [...data.events, ...effectiveEvents]) {
+    const parent = event.purposeL1?.trim();
+    const child = event.purposeL2?.trim();
+    if (!parent) continue;
+    if (!catalog.has(parent)) catalog.set(parent, new Set());
+    if (child) catalog.get(parent).add(child);
+  }
+  return catalog;
+}
+
+function purposeOptions(names, selected, level) {
+  return `<option value="">请选择${level}用途</option>` +
+    [...names].sort((a,b) => a.localeCompare(b,'zh-CN')).map(name =>
+      `<option value="${escapeHTML('known:'+name)}" ${name===selected?'selected':''}>${escapeHTML(name)}</option>`).join('') +
+    `<option value="new">＋ 新增${level}用途…</option>`;
+}
+
+function purposeField(level, name, names, selected, maxLength) {
+  return `<div><label>${level}用途<select name="${name}" required>${purposeOptions(names,selected,level)}</select></label><label id="${name}-new-label" hidden>新${level}用途名称<input name="${name}New" maxlength="${maxLength}" placeholder="输入新用途名称" disabled></label></div>`;
+}
+
+function selectedPurpose(form, name) {
+  const value = form.elements[name].value;
+  return value === 'new' ? form.elements[name+'New'].value.trim() : value.startsWith('known:') ? value.slice(6) : '';
+}
+
+function toggleNewPurpose(form, name) {
+  const adding = form.elements[name].value === 'new';
+  $(name+'-new-label').hidden = !adding;
+  form.elements[name+'New'].disabled = !adding;
+  form.elements[name+'New'].required = adding;
+}
+
+function refreshSecondaryPurpose(form) {
+  const selected = selectedPurpose(form,'purposeL2');
+  const names = purposeCatalog().get(selectedPurpose(form,'purposeL1')) || new Set();
+  form.elements.purposeL2.innerHTML = purposeOptions(names, names.has(selected) ? selected : '', '二级');
+  form.elements.purposeL2New.value = '';
+  toggleNewPurpose(form,'purposeL2');
+}
+
 function showEvent(id) {
   const event = effectiveEvents.find((entry) => entry.id === id);
   if (!event) return;
@@ -192,7 +235,7 @@ function showEvent(id) {
   const refs = event.sourceRefs || [];
   const locked=['rent','duplicate_pending'].includes(event.kind);
   const knownExpense = Number.isSafeInteger(event.amountFen) ? fmt(event.amountFen) : '待核定';
-  $('dialog-content').innerHTML = `<h2 id="dialog-title" class="detail-title">${escapeHTML(event.party || event.purposeL1 || '交易详情')}</h2><p class="detail-subtitle">${escapeHTML(event.id)} · ${escapeHTML(event.date)} · ${escapeHTML(eventStatus(event))}${event.localDraft ? ' · 尚未合并到来源账本' : ''}</p><div class="detail-amounts"><div><span>原交易金额</span><strong>${escapeHTML(fmt(event.rawAmountFen))}</strong></div><div><span>本期计入费用</span><strong>${escapeHTML(knownExpense)}</strong></div></div><dl class="detail-list"><dt>用途</dt><dd>${escapeHTML(event.purposeL1 || '用途待确认')} / ${escapeHTML(event.purposeL2 || '明细待确认')}</dd><dt>用途依据</dt><dd>${escapeHTML(event.purposeStatus==='user'?'用户已确认':event.purposeStatus==='local'?'本机修改草稿':event.purposeStatus==='source'?'来源线索建议，尚待核实':'待确认')}</dd><dt>归属</dt><dd>${escapeHTML(scopeNames[event.scope] || '待归属')}</dd><dt>支付渠道</dt><dd>${escapeHTML(event.platform || '未提供')} · ${escapeHTML(event.account || '账户未提供')}</dd><dt>资金性质</dt><dd>${escapeHTML(natureNames[event.kind] || event.kind || '待确认')}</dd><dt>原始摘要</dt><dd>${escapeHTML(event.description || '未提供可公开的摘要')}</dd><dt>日期口径</dt><dd>${escapeHTML(event.date)}${event.transactionDate && event.transactionDate !== event.date ? `（原交易日 ${escapeHTML(event.transactionDate)}）` : ''}</dd><dt>费用规律</dt><dd>${escapeHTML(event.frequency || '待判断')}</dd></dl>${event.note ? `<div class="detail-note">${escapeHTML(event.note)}</div>` : ''}${event.localDraft ? `<div class="detail-note">本机草稿已覆盖展示字段，原始来源仍保留。原确认用途：${escapeHTML(original.purposeL1 || '待确认')}；原本期金额：${escapeHTML(fmt(original.amountFen))}。${escapeHTML(event.localNote || '')}</div>` : ''}<h3 class="detail-section-title">关联来源 · ${refs.length} 条证据</h3>${refs.length ? refs.map((ref) => `<div class="source-evidence"><strong>${escapeHTML(ref.sourceLabel || '账本来源')} · ${escapeHTML(ref.code || '')}</strong><span>${ref.page ? `第 ${escapeHTML(ref.page)} 页` : ''}${ref.row ? ` · 第 ${escapeHTML(ref.row)} 行` : ''} · ${escapeHTML(ref.date || event.date)} · ${escapeHTML(fmt(ref.amountFen))}</span><small>${escapeHTML(ref.role || '来源记录')} · 仅展示脱敏定位，不公开原始附件</small></div>`).join('') : '<p class="muted">本条为已确认预付款的分摊明细，查看关联房租付款组。</p>'}<form id="edit-form" class="edit-form"><h3>保存一份本机确认草稿</h3><p>核对依据后修改。所有原付款和来源证据保持不变；保存仅作用于当前设备。</p><div class="form-grid"><label>归属主体<select name="scope">${Object.entries(scopeNames).filter(([key]) => key !== 'all').map(([key,label]) => `<option value="${key}" ${event.scope===key?'selected':''}>${label}</option>`).join('')}</select></label><label>费用账期<select name="period" ${locked?'disabled':''}>${data.periods.map((p) => `<option value="${escapeHTML(p.id)}" ${event.period === p.id ? 'selected' : ''}>${escapeHTML(p.label)}</option>`).join('')}</select></label><label>一级用途<input name="purposeL1" value="${escapeHTML(event.purposeL1 || '')}" maxlength="60" placeholder="用途待确认"></label><label>二级用途<input name="purposeL2" value="${escapeHTML(event.purposeL2 || '')}" maxlength="80" placeholder="具体用途"></label><label>本期计入金额（元）<input name="amount" ${locked?'disabled':''} inputmode="decimal" value="${Number.isSafeInteger(event.amountFen) ? (event.amountFen/100).toFixed(2) : ''}" placeholder="留空表示待确认" maxlength="14"></label><label>费用处理<select name="treatment" ${locked?'disabled':''}><option value="include" ${!event.excluded?'selected':''}>按所填金额计入 / 待确认</option><option value="exclude" ${event.excluded?'selected':''}>不计费用，保留原交易</option></select></label><label>预算调整空间<select name="necessity">${['待判断','必要','可调整'].map(v=>`<option ${event.necessity===v?'selected':''}>${v}</option>`).join('')}</select></label><label style="grid-column:1/-1">确认说明<input name="note" value="${escapeHTML(event.localNote || '')}" placeholder="如：服务日期、最终承担人、核对依据" maxlength="500"></label></div>${locked?'<p class="detail-note">房租关联组及疑似重复记录保持来源账本的金额与分摊，避免再次计费。此处可补充用途、归属和说明。</p>':''}<p id="form-error" class="form-error" role="alert"></p><div class="form-actions"><button type="submit" class="primary-button">保存本机草稿</button>${event.localDraft ? '<button id="restore-event" class="quiet-button" type="button">恢复来源记录</button>' : ''}</div></form>`;
+  $('dialog-content').innerHTML = `<h2 id="dialog-title" class="detail-title">${escapeHTML(event.party || event.purposeL1 || '交易详情')}</h2><p class="detail-subtitle">${escapeHTML(event.id)} · ${escapeHTML(event.date)} · ${escapeHTML(eventStatus(event))}${event.localDraft ? ' · 尚未合并到来源账本' : ''}</p><div class="detail-amounts"><div><span>原交易金额</span><strong>${escapeHTML(fmt(event.rawAmountFen))}</strong></div><div><span>本期计入费用</span><strong>${escapeHTML(knownExpense)}</strong></div></div><dl class="detail-list"><dt>用途</dt><dd>${escapeHTML(event.purposeL1 || '用途待确认')} / ${escapeHTML(event.purposeL2 || '明细待确认')}</dd><dt>用途依据</dt><dd>${escapeHTML(event.purposeStatus==='user'?'用户已确认':event.purposeStatus==='local'?'本机修改草稿':event.purposeStatus==='source'?'来源线索建议，尚待核实':'待确认')}</dd><dt>归属</dt><dd>${escapeHTML(scopeNames[event.scope] || '待归属')}</dd><dt>支付渠道</dt><dd>${escapeHTML(event.platform || '未提供')} · ${escapeHTML(event.account || '账户未提供')}</dd><dt>资金性质</dt><dd>${escapeHTML(natureNames[event.kind] || event.kind || '待确认')}</dd><dt>原始摘要</dt><dd>${escapeHTML(event.description || '未提供可公开的摘要')}</dd><dt>日期口径</dt><dd>${escapeHTML(event.date)}${event.transactionDate && event.transactionDate !== event.date ? `（原交易日 ${escapeHTML(event.transactionDate)}）` : ''}</dd><dt>费用规律</dt><dd>${escapeHTML(event.frequency || '待判断')}</dd></dl>${event.note ? `<div class="detail-note">${escapeHTML(event.note)}</div>` : ''}${event.localDraft ? `<div class="detail-note">本机草稿已覆盖展示字段，原始来源仍保留。原确认用途：${escapeHTML(original.purposeL1 || '待确认')}；原本期金额：${escapeHTML(fmt(original.amountFen))}。${escapeHTML(event.localNote || '')}</div>` : ''}<h3 class="detail-section-title">关联来源 · ${refs.length} 条证据</h3>${refs.length ? refs.map((ref) => `<div class="source-evidence"><strong>${escapeHTML(ref.sourceLabel || '账本来源')} · ${escapeHTML(ref.code || '')}</strong><span>${ref.page ? `第 ${escapeHTML(ref.page)} 页` : ''}${ref.row ? ` · 第 ${escapeHTML(ref.row)} 行` : ''} · ${escapeHTML(ref.date || event.date)} · ${escapeHTML(fmt(ref.amountFen))}</span><small>${escapeHTML(ref.role || '来源记录')} · 仅展示脱敏定位，不公开原始附件</small></div>`).join('') : '<p class="muted">本条为已确认预付款的分摊明细，查看关联房租付款组。</p>'}<form id="edit-form" class="edit-form"><h3>保存一份本机确认草稿</h3><p>核对依据后修改。所有原付款和来源证据保持不变；保存仅作用于当前设备。</p><div class="form-grid"><label>归属主体<select name="scope">${Object.entries(scopeNames).filter(([key]) => key !== 'all').map(([key,label]) => `<option value="${key}" ${event.scope===key?'selected':''}>${label}</option>`).join('')}</select></label><label>费用账期<select name="period" ${locked?'disabled':''}>${data.periods.map((p) => `<option value="${escapeHTML(p.id)}" ${event.period === p.id ? 'selected' : ''}>${escapeHTML(p.label)}</option>`).join('')}</select></label>${purposeField('一级','purposeL1',purposeCatalog().keys(),event.purposeL1,60)}${purposeField('二级','purposeL2',purposeCatalog().get(event.purposeL1)||[],event.purposeL2,80)}<label>本期计入金额（元）<input name="amount" ${locked?'disabled':''} inputmode="decimal" value="${Number.isSafeInteger(event.amountFen) ? (event.amountFen/100).toFixed(2) : ''}" placeholder="留空表示待确认" maxlength="14"></label><label>费用处理<select name="treatment" ${locked?'disabled':''}><option value="include" ${!event.excluded?'selected':''}>按所填金额计入 / 待确认</option><option value="exclude" ${event.excluded?'selected':''}>不计费用，保留原交易</option></select></label><label>预算调整空间<select name="necessity">${['待判断','必要','可调整'].map(v=>`<option ${event.necessity===v?'selected':''}>${v}</option>`).join('')}</select></label><label style="grid-column:1/-1">确认说明<input name="note" value="${escapeHTML(event.localNote || '')}" placeholder="如：服务日期、最终承担人、核对依据" maxlength="500"></label></div>${locked?'<p class="detail-note">房租关联组及疑似重复记录保持来源账本的金额与分摊，避免再次计费。此处可补充用途、归属和说明。</p>':''}<p id="form-error" class="form-error" role="alert"></p><div class="form-actions"><button type="submit" class="primary-button">保存本机草稿</button>${event.localDraft ? '<button id="restore-event" class="quiet-button" type="button">恢复来源记录</button>' : ''}</div></form>`;
   if (!$('event-dialog').open) $('event-dialog').showModal();
 }
 
@@ -201,7 +244,9 @@ function saveEvent(form) {
   try {
     const amountFen = parseMoney(fields.get('amount'),{allowNegative:true});
     const event = data.events.find((entry) => entry.id === activeEvent);
-    const patch={...drafts[activeEvent],scope:fields.get('scope'),purposeL1:String(fields.get('purposeL1')).trim()||'用途待确认',purposeL2:String(fields.get('purposeL2')).trim()||'未细分',necessity:fields.get('necessity'),note:String(fields.get('note')).trim(),updatedAt:new Date().toISOString()};
+    const purposeL1=selectedPurpose(form,'purposeL1'), purposeL2=selectedPurpose(form,'purposeL2');
+    if (!purposeL1 || !purposeL2) throw new Error('请选择一级和二级用途，或输入新用途名称。');
+    const patch={...drafts[activeEvent],scope:fields.get('scope'),purposeL1,purposeL2,necessity:fields.get('necessity'),note:String(fields.get('note')).trim(),updatedAt:new Date().toISOString()};
     if(!['rent','duplicate_pending'].includes(event.kind))Object.assign(patch,{period:fields.get('period'),amountFen,excluded:fields.get('treatment')==='exclude'});
     const clean=validateLocalState({sourceVersion:data.version,drafts:{...drafts,[activeEvent]:patch},budgets},data);
     drafts=clean.drafts;
@@ -253,6 +298,16 @@ function bindEvents() {
   $('export-csv').addEventListener('click',exportCSV);$('export-drafts').addEventListener('click',exportDrafts);
   $('close-dialog').addEventListener('click',() => $('event-dialog').close());
   $('event-dialog').addEventListener('click',(event) => { if(event.target === $('event-dialog')) { const bounds=$('event-dialog').getBoundingClientRect();if(event.clientX<bounds.left||event.clientX>bounds.right||event.clientY<bounds.top||event.clientY>bounds.bottom)$('event-dialog').close(); } });
+  $('dialog-content').addEventListener('change', event => {
+    const form = event.target.closest('#edit-form');
+    if (!form || !['purposeL1','purposeL2'].includes(event.target.name)) return;
+    toggleNewPurpose(form,event.target.name);
+    if (event.target.name === 'purposeL1') refreshSecondaryPurpose(form);
+    if (event.target.value === 'new') form.elements[event.target.name+'New'].focus();
+  });
+  $('dialog-content').addEventListener('input', event => {
+    if (event.target.name === 'purposeL1New') refreshSecondaryPurpose(event.target.form);
+  });
   $('dialog-content').addEventListener('submit',(event) => { if(event.target.id==='edit-form'){event.preventDefault();saveEvent(event.target);} });
   $('next-period').addEventListener('click',() => { const index=data.periods.findIndex((p)=>p.id===state.period);if(index < data.periods.length-1){state.period=data.periods[index+1].id;render();notify('已切换到下一账期，可填写用途预算。');}else notify('后续账期尚未建立，请先在当前账期安排预算。'); });
   $('budget-list').addEventListener('change',(event) => {
